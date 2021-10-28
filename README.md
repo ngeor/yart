@@ -1,12 +1,6 @@
 # yart
 yart is yet another release tool
 
-[![Build Status](https://travis-ci.org/ngeor/yart.svg?branch=master)](https://travis-ci.org/ngeor/yart)
-[![npm (scoped)](https://img.shields.io/npm/v/@ngeor/yart.svg)](https://www.npmjs.com/package/@ngeor/yart)
-[![Coverage Status](https://coveralls.io/repos/github/ngeor/yart/badge.svg)](https://coveralls.io/github/ngeor/yart)
-[![Dependencies](https://david-dm.org/ngeor/yart.svg)](https://david-dm.org/ngeor/yart)
-[![devDependencies Status](https://david-dm.org/ngeor/yart/dev-status.svg)](https://david-dm.org/ngeor/yart?type=dev)
-
 ## Overview
 
 You can use yart to automatically bump up the version of a project in a
