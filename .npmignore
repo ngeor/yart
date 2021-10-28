@@ -1,9 +1,0 @@
-.nyc_output/
-.*
-tsconfig.json
-coverage/
-docs/
-dist/**/*.test.js
-dist/**/*.js.map
-dist/test/
-src/
