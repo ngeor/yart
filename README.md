@@ -1,4 +1,5 @@
 # yart
+
 yart is yet another release tool
 
 ## Overview
@@ -26,16 +27,11 @@ If you run `yart -v minor`, it will:
 
 The inspiration comes from `npm version minor` which does more or less the same, but for npm projects.
 
-I find it cumbersome to achieve the same with Maven projects where I can get as far as:
-
-```
-mvn build-helper:parse-version versions:set -DnewVersion=${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion} versions:commit
-```
+For Maven projects, consider `mvn release:prepare`.
 
 ## Installation
 
-You can use yart without installing it with `npx @ngeor/yart`. If you prefer, you
-can install it with `npm i -g @ngeor/yart` and then run it with `yart`.
+TODO
 
 ## Tags
 
@@ -59,17 +55,15 @@ yart will tag the version and push it to git in a consistent format:
 The version might be present in language specific files and yart tries to bump
 the version there too.
 
-Currently only Maven projects are supported.
-
-### Maven
-
-yart bumps up the version in `pom.xml`. It takes into account multi-module
-projects, ensuring that child modules point to the correct parent version.
-
 ### Readme files
 
 yart will do a text replace in files named `README.md`, replacing the current
 version with the new version.
+
+### TODO support more stacks
+
+[ ] VB6
+[ ] Cargo
 
 ## Options
 
@@ -83,20 +77,3 @@ version with the new version.
 -  `--no-push`            :  Do not push
 -  `--verbose`            :  Increase logging verbosity
 -  `-h, --help`           : output usage information
-
-## Developing
-
-### Folder Structure
-
-```
-- src
-  |- main              source code and unit tests
-     |
-     |- file.ts        source code
-     \- file.test.ts   unit test
-  \- test              additional test files
-     |
-     |- features       cucumber tests
-     |- fixtures       test data
-     \- utils          test utilities
-```
