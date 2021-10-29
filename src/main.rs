@@ -1,14 +1,17 @@
+mod vbg;
+
 extern crate clap;
 
 use clap::{App, Arg};
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
+use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum SemVerBump {
+pub enum SemVerBump {
     Major,
     Minor,
     Patch,
@@ -104,24 +107,38 @@ fn main() -> Result<(), &'static str> {
     let output = Command::new("git")
         .arg("tag")
         .arg("--list")
-        .current_dir(args.dir)
+        .current_dir(args.dir.as_str())
         .output()
         .unwrap();
     match find_biggest_tag(String::from_utf8(output.stdout).unwrap().as_str()) {
         Some(biggest_tag) => {
-            println!("{} {}", biggest_tag, biggest_tag.bump(args.version));
-            //update_files();
-            //create_tag();
-            //push_tag();
+            let next_version = biggest_tag.bump(args.version);
+            println!("Current version: {}, next version: {}", biggest_tag, next_version);
+            let writer = create_writer(args.dry_run);
+            let changed_files = update_files(args.dir.as_str(), biggest_tag, next_version, writer).unwrap();
+            if args.dry_run {
+                println!("Would have committed modified files, created tag, pushed to remote");
+            } else {
+                //create_tag();
+                //push_tag();
+            }
             Ok(())
         }
         _ => Err("Could not find a tag in vMajor.Minor.Patch format"),
     }
 }
 
+fn create_writer(dry_run: bool) -> Box<dyn FileWriter> {
+    if dry_run {
+        Box::new(DryFileWriter {})
+    } else {
+        Box::new(WetFileWriter {})
+    }
+}
+
 fn find_biggest_tag(tag_lines: &str) -> Option<SemVer> {
     let mut tags: Vec<SemVer> = tag_lines
-        .split("\n")
+        .lines()
         .map(str::trim)
         .map(remove_v_prefix)
         .filter(Option::is_some)
@@ -148,7 +165,7 @@ fn remove_v_prefix(tag: &str) -> Option<&str> {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct SemVer {
+pub struct SemVer {
     major: u16,
     minor: u16,
     patch: u16,
@@ -227,6 +244,34 @@ impl FromStr for SemVer {
             Err(err) => Err(SemVerParseError::ParseIntError(err)),
         }
     }
+}
+
+pub trait FileWriter {
+    fn write(&self, path: &PathBuf, contents: &str) -> std::io::Result<()>;
+}
+
+struct DryFileWriter {}
+
+impl FileWriter for DryFileWriter {
+    fn write(&self, path: &PathBuf, _contents: &str) -> std::io::Result<()> {
+        println!("Would have written {:?}", path);
+        Ok(())
+    }
+}
+
+struct WetFileWriter {}
+
+impl FileWriter for WetFileWriter {
+    fn write(&self, path: &PathBuf, contents: &str) -> std::io::Result<()> {
+        std::fs::write(path, contents)
+    }
+}
+
+fn update_files(dir: &str, old_version: SemVer, new_version: SemVer, writer: Box<dyn FileWriter>) -> std::io::Result<Vec<PathBuf>> {
+    let mut changed_files = Vec::<PathBuf>::new();
+    let mut vbp_files = vbg::handle(dir, new_version, writer)?;
+    changed_files.append(&mut vbp_files);
+    Ok(changed_files)
 }
 
 #[cfg(test)]
