@@ -1,3 +1,4 @@
+mod git;
 mod vbg;
 
 extern crate clap;
@@ -7,7 +8,6 @@ use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::num::ParseIntError;
 use std::path::PathBuf;
-use std::process::Command;
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -104,23 +104,36 @@ impl CliOptions {
 
 fn main() -> Result<(), &'static str> {
     let args = CliOptions::parse();
-    let output = Command::new("git")
-        .arg("tag")
-        .arg("--list")
-        .current_dir(args.dir.as_str())
-        .output()
-        .unwrap();
-    match find_biggest_tag(String::from_utf8(output.stdout).unwrap().as_str()) {
+    let git_tags_output = git::tags(&args.dir).unwrap();
+    match find_biggest_tag(&git_tags_output) {
         Some(biggest_tag) => {
             let next_version = biggest_tag.bump(args.version);
-            println!("Current version: {}, next version: {}", biggest_tag, next_version);
-            let writer = create_writer(args.dry_run);
-            let changed_files = update_files(args.dir.as_str(), biggest_tag, next_version, writer).unwrap();
+            println!(
+                "Current version: {}, next version: {}",
+                biggest_tag, next_version
+            );
+            let writer = create_writer(PathBuf::from(&args.dir), args.dry_run);
+            let changed_files =
+                update_files(args.dir.as_str(), biggest_tag, next_version, writer).unwrap();
             if args.dry_run {
                 println!("Would have committed modified files, created tag, pushed to remote");
             } else {
-                //create_tag();
-                //push_tag();
+                let msg_prefix = if args.message.is_empty() {
+                    "Releasing version".to_string()
+                } else {
+                    args.message
+                };
+                let msg = format!("{} {}", msg_prefix, next_version);
+
+                if !changed_files.is_empty() {
+                    git::commit(&args.dir, &msg).unwrap();
+                }
+                git::tag(&args.dir, &msg, format!("v{}", next_version)).unwrap();
+                if args.no_push {
+                    println!("Tagged, but not pushing because --no-push was specified");
+                } else {
+                    git::push(&args.dir).unwrap();
+                }
             }
             Ok(())
         }
@@ -128,11 +141,14 @@ fn main() -> Result<(), &'static str> {
     }
 }
 
-fn create_writer(dry_run: bool) -> Box<dyn FileWriter> {
+fn create_writer(git_dir: PathBuf, dry_run: bool) -> Box<dyn FileWriter> {
     if dry_run {
         Box::new(DryFileWriter {})
     } else {
-        Box::new(WetFileWriter {})
+        Box::new(CompositeWriter {
+            first: WetFileWriter {},
+            second: GitAddWriter { git_dir },
+        })
     }
 }
 
@@ -254,7 +270,7 @@ struct DryFileWriter {}
 
 impl FileWriter for DryFileWriter {
     fn write(&self, path: &PathBuf, _contents: &str) -> std::io::Result<()> {
-        println!("Would have written {:?}", path);
+        println!("Would have written {}", path.to_string_lossy());
         Ok(())
     }
 }
@@ -267,7 +283,36 @@ impl FileWriter for WetFileWriter {
     }
 }
 
-fn update_files(dir: &str, old_version: SemVer, new_version: SemVer, writer: Box<dyn FileWriter>) -> std::io::Result<Vec<PathBuf>> {
+struct GitAddWriter {
+    git_dir: PathBuf,
+}
+
+impl FileWriter for GitAddWriter {
+    fn write(&self, path: &PathBuf, contents: &str) -> std::io::Result<()> {
+        let item_to_add = path.strip_prefix(&self.git_dir).unwrap();
+        git::add(&self.git_dir, item_to_add).unwrap();
+        Ok(())
+    }
+}
+
+struct CompositeWriter<A, B> {
+    first: A,
+    second: B,
+}
+
+impl<A: FileWriter, B: FileWriter> FileWriter for CompositeWriter<A, B> {
+    fn write(&self, path: &PathBuf, contents: &str) -> std::io::Result<()> {
+        self.first.write(path, contents)?;
+        self.second.write(path, contents)
+    }
+}
+
+fn update_files(
+    dir: &str,
+    old_version: SemVer,
+    new_version: SemVer,
+    writer: Box<dyn FileWriter>,
+) -> std::io::Result<Vec<PathBuf>> {
     let mut changed_files = Vec::<PathBuf>::new();
     let mut vbp_files = vbg::handle(dir, new_version, writer)?;
     changed_files.append(&mut vbp_files);

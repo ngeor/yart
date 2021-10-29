@@ -1,13 +1,17 @@
 //! Handle Visual Basic 6.0 VBG and VBP files
 
-use std::fs;
-use std::path::{PathBuf};
 use crate::{FileWriter, SemVer};
+use std::fs;
+use std::path::PathBuf;
 
 /// Processes the given directory and sets the version
 /// of any vbp file to the given version.
 /// Returns the modified files.
-pub fn handle(dir: &str, version: SemVer, writer: Box<dyn FileWriter>) -> std::io::Result<Vec<PathBuf>> {
+pub fn handle(
+    dir: &str,
+    version: SemVer,
+    writer: Box<dyn FileWriter>,
+) -> std::io::Result<Vec<PathBuf>> {
     let files = find_vbp_files(dir)?;
     let mut changed_files = Vec::<PathBuf>::new();
     for file in files {
@@ -45,7 +49,7 @@ fn find_vbp_files(dir: &str) -> std::io::Result<Vec<PathBuf>> {
 fn has_extension(path_buf: &PathBuf, extension: &str) -> bool {
     match path_buf.extension() {
         Some(os_str) => os_str.to_string_lossy().eq_ignore_ascii_case(extension),
-        _ => false
+        _ => false,
     }
 }
 
@@ -60,12 +64,16 @@ mod vbg_parser {
     }
 
     fn process_vbg_file_contents(path: PathBuf, contents: &str) -> Vec<PathBuf> {
-        contents.lines()
+        contents
+            .lines()
             .map(str::trim)
             .filter(|s| is_project_line(*s))
             .map(extract_project)
             .map(|s| s.replace("\\", "/"))
-            .map(|s| s.split("/").fold(path.parent().unwrap().to_path_buf(), |l, r| l.join(r)))
+            .map(|s| {
+                s.split("/")
+                    .fold(path.parent().unwrap().to_path_buf(), |l, r| l.join(r))
+            })
             .collect()
     }
 
@@ -133,7 +141,7 @@ mod vbp_parser {
                     line.to_owned()
                 }
             }
-            _ => line.to_owned()
+            _ => line.to_owned(),
         }
     }
 
@@ -158,7 +166,8 @@ MinorVer=3
 RevisionVer=4
 
 NoAliasing=0
-".replace("\n", "\r\n");
+"
+            .replace("\n", "\r\n");
             let actual = set_vbp_version(input, SemVer::new(2, 3, 4));
             assert_eq!(expected, actual);
         }
