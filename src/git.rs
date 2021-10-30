@@ -1,6 +1,7 @@
 //! Calls git as a process
 
 use std::ffi::OsStr;
+use std::fmt::Formatter;
 use std::path::Path;
 use std::process::Command;
 use std::string::FromUtf8Error;
@@ -11,6 +12,18 @@ pub enum GitError {
     FromUtf8Error(FromUtf8Error),
     NonZeroExitCode,
 }
+
+impl std::fmt::Display for GitError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::IOError(e) => std::fmt::Display::fmt(&e, f),
+            Self::FromUtf8Error(e) => std::fmt::Display::fmt(&e, f),
+            Self::NonZeroExitCode => f.write_str("git returned non-zero exit code"),
+        }
+    }
+}
+
+impl std::error::Error for GitError {}
 
 pub fn tags<P: AsRef<Path>>(dir: P) -> Result<String, GitError> {
     match Command::new("git")

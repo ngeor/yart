@@ -1,55 +1,39 @@
-//! Handle Visual Basic 6.0 VBG and VBP files
+//! Handles Visual Basic 6.0 VBG and VBP files
 
-use crate::{FileWriter, SemVer};
+use crate::files::{has_extension, ContentProcessor, FileFinder};
+use crate::SemVer;
 use std::fs;
 use std::path::PathBuf;
 
-/// Processes the given directory and sets the version
-/// of any vbp file to the given version.
-/// Returns the modified files.
-pub fn handle(
-    dir: &str,
-    version: SemVer,
-    writer: Box<dyn FileWriter>,
-) -> std::io::Result<Vec<PathBuf>> {
-    let files = find_vbp_files(dir)?;
-    let mut changed_files = Vec::<PathBuf>::new();
-    for file in files {
-        let vbp_contents = fs::read_to_string(&file)?;
-        let changed_contents = vbp_parser::set_vbp_version(vbp_contents.as_str(), version);
-        if vbp_contents != changed_contents {
-            writer.write(&file, changed_contents.as_str())?;
-            changed_files.push(file);
-        }
-    }
-    Ok(changed_files)
-}
+pub struct VB6Updater {}
 
 /// Find vbp files in the current directory.
 /// vbp files are detected in two ways:
 /// 1. Directly at the root directory
 /// 2. Referenced via vbg files at the root directory.
-fn find_vbp_files(dir: &str) -> std::io::Result<Vec<PathBuf>> {
-    let mut result = Vec::<PathBuf>::new();
-    for res_entry in fs::read_dir(dir)? {
-        let entry = res_entry?;
-        let path = entry.path();
-        if path.is_file() {
-            if has_extension(&path, "vbg") {
-                let mut projects_in_vbg_file = vbg_parser::process_vbg_file(path)?;
-                result.append(&mut projects_in_vbg_file);
-            } else if has_extension(&path, "vbp") {
-                result.push(path);
+impl FileFinder for VB6Updater {
+    fn find(&self, dir: &str) -> std::io::Result<Vec<PathBuf>> {
+        let mut result = Vec::<PathBuf>::new();
+        for res_entry in fs::read_dir(dir)? {
+            let entry = res_entry?;
+            let path = entry.path();
+            if path.is_file() {
+                if has_extension(&path, "vbg") {
+                    let mut projects_in_vbg_file = vbg_parser::process_vbg_file(path)?;
+                    result.append(&mut projects_in_vbg_file);
+                } else if has_extension(&path, "vbp") {
+                    result.push(path);
+                }
             }
         }
+        Ok(result)
     }
-    Ok(result)
 }
 
-fn has_extension(path_buf: &PathBuf, extension: &str) -> bool {
-    match path_buf.extension() {
-        Some(os_str) => os_str.to_string_lossy().eq_ignore_ascii_case(extension),
-        _ => false,
+impl ContentProcessor for VB6Updater {
+    type Err = std::io::Error; // does not really throw error
+    fn process(&self, old_contents: &str, version: SemVer) -> Result<String, Self::Err> {
+        Ok(vbp_parser::set_vbp_version(old_contents, version))
     }
 }
 
