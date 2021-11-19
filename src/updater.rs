@@ -2,7 +2,7 @@
 
 use crate::files::{DirUpdater, UpdateError};
 use crate::writers::create_writer;
-use crate::{delphi, vb6, SemVer};
+use crate::{delphi, rust, vb6, SemVer};
 use std::path::PathBuf;
 
 pub fn update_files(
@@ -21,6 +21,13 @@ pub fn update_files(
 
 struct CompositeDirUpdater {}
 
+macro_rules! add_files {
+    ($updater:expr, $dir: expr, $new_version: expr, $result: expr) => {
+        let mut partial_files = $updater.update($dir, $new_version)?;
+        $result.append(&mut partial_files);
+    };
+}
+
 impl DirUpdater for CompositeDirUpdater {
     fn update(
         &self,
@@ -28,10 +35,9 @@ impl DirUpdater for CompositeDirUpdater {
         new_version: SemVer,
     ) -> Result<Vec<(PathBuf, String)>, UpdateError> {
         let mut result = Vec::<(PathBuf, String)>::new();
-        let mut vbp_files = vb6::VB6Updater {}.update(dir, new_version)?;
-        result.append(&mut vbp_files);
-        let mut delphi_files = delphi::LpiUpdater {}.update(dir, new_version)?;
-        result.append(&mut delphi_files);
+        add_files!(vb6::VB6Updater {}, dir, new_version, result);
+        add_files!(delphi::LpiUpdater {}, dir, new_version, result);
+        add_files!(rust::CargoDirUpdater::new(), dir, new_version, result);
         Ok(result)
     }
 }

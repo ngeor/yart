@@ -2,6 +2,7 @@ mod cli_options;
 mod delphi;
 mod files;
 mod git;
+mod rust;
 mod sem_ver;
 mod updater;
 mod vb6;
