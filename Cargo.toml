@@ -10,5 +10,5 @@ edition = "2018"
 xml-rs = "~0.8"
 
 [dependencies.clap]
-version = "~2.27.0"
+version = "~2.34.0"
 default-features = false
