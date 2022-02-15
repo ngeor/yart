@@ -19,8 +19,8 @@ impl CliOptions {
             .author("Nikolaos Georgiou <nikolaos.georgiou@gmail.com>")
             .about("Yet another release tool")
             .arg(
-                Arg::with_name("version")
-                    .short("v")
+                Arg::new("version")
+                    .short('v')
                     .help("Specify the target SemVer version")
                     .required(true)
                     .takes_value(true)
@@ -29,7 +29,7 @@ impl CliOptions {
                     .possible_value("patch"),
             )
             .arg(
-                Arg::with_name("dir")
+                Arg::new("dir")
                     .long("dir")
                     .help("The working directory of the git repository")
                     .required(false)
@@ -37,8 +37,8 @@ impl CliOptions {
                     .takes_value(true),
             )
             .arg(
-                Arg::with_name("message")
-                    .short("m")
+                Arg::new("message")
+                    .short('m')
                     .long("message")
                     .help("A custom message for the git commit")
                     .required(false)
@@ -46,19 +46,19 @@ impl CliOptions {
                     .takes_value(true),
             )
             .arg(
-                Arg::with_name("dry-run")
+                Arg::new("dry-run")
                     .long("dry-run")
                     .help("Do not actually modify anything")
                     .required(false),
             )
             .arg(
-                Arg::with_name("no-push")
+                Arg::new("no-push")
                     .long("no-push")
                     .help("Do not push changes to the remote repository")
                     .required(false),
             )
             .arg(
-                Arg::with_name("verbose")
+                Arg::new("verbose")
                     .long("verbose")
                     .help("Increase logging verbosity")
                     .required(false),
