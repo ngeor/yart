@@ -1,10 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.1.1] - 2022-02-15
 
 ### Dependencies
 
+- Upgrade to clap 3
 - Update rust crate clap to ~2.34.0
 
 ### Miscellaneous Tasks
